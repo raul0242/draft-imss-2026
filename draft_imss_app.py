@@ -1,20 +1,12 @@
 """
 ╔══════════════════════════════════════════════════════════════╗
 ║        DRAFT IMSS 2026 – Monitor de Plazas Disponibles       ║
-║        Desarrollado para IMSS / Normativo Nacional           ║
+║        Versión Mobile-Friendly                               ║
 ╚══════════════════════════════════════════════════════════════╝
 
-INSTRUCCIONES DE USO:
-1. Instala dependencias (solo la primera vez):
-       pip install streamlit pandas openpyxl
-
-2. Coloca este archivo y el Excel en la misma carpeta.
-
-3. Ejecuta la app:
-       streamlit run draft_imss_app.py
-
-4. Se abre automáticamente en tu navegador en http://localhost:8501
-   Comparte esa URL en tu red local para que otros la consulten.
+INSTRUCCIONES:
+    pip install streamlit pandas openpyxl
+    streamlit run draft_imss_app.py
 """
 
 import streamlit as st
@@ -25,94 +17,175 @@ import os
 from datetime import datetime
 
 # ─────────────────────────────────────────────
-# CONFIGURACIÓN GENERAL
+# CONFIGURACIÓN
 # ─────────────────────────────────────────────
-EXCEL_PATH = "PLAZAS_DRAFT_2026_X_ZONA.xlsx"   # <-- pon el nombre de tu archivo aquí
-ESTADO_PATH = "estado_draft.json"               # archivo donde se guarda el avance
+EXCEL_PATH  = "PLAZAS_DRAFT_2026_X_ZONA.xlsx"
+ESTADO_PATH = "estado_draft.json"
 
 st.set_page_config(
-    page_title="Draft IMSS 2026 – Plazas Disponibles",
+    page_title="Draft IMSS 2026",
     page_icon="🏥",
-    layout="wide",
-    initial_sidebar_state="expanded",
+    layout="centered",
+    initial_sidebar_state="collapsed",
 )
 
 # ─────────────────────────────────────────────
-# ESTILOS
+# CSS RESPONSIVE (mobile-first)
 # ─────────────────────────────────────────────
 st.markdown("""
 <style>
-    .main-title {
-        font-size: 2rem; font-weight: 700; color: #003087;
-        text-align: center; margin-bottom: 0;
+    html, body, [class*="css"] { font-family: 'Segoe UI', sans-serif; }
+
+    .block-container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        padding-top: 1rem !important;
+        max-width: 900px;
     }
-    .sub-title {
-        text-align: center; color: #666; margin-bottom: 1.5rem;
+
+    /* ── Header ── */
+    .app-header {
+        background: linear-gradient(135deg, #003087 0%, #0050b3 100%);
+        color: white;
+        padding: 16px 20px;
+        border-radius: 12px;
+        margin-bottom: 16px;
+        text-align: center;
     }
-    .metric-disponible {
-        background: #e8f5e9; border-left: 5px solid #2e7d32;
-        padding: 10px 15px; border-radius: 6px; margin: 5px 0;
+    .app-header h1 { font-size: 1.4rem; margin: 0; font-weight: 700; }
+    .app-header p  { font-size: 0.85rem; margin: 4px 0 0; opacity: 0.85; }
+
+    /* ── KPI Cards ── */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 16px;
     }
-    .metric-tomada {
-        background: #ffebee; border-left: 5px solid #c62828;
-        padding: 10px 15px; border-radius: 6px; margin: 5px 0;
+    .kpi-card {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 14px 12px;
+        text-align: center;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
-    .badge-zona {
-        background: #003087; color: white; padding: 3px 10px;
-        border-radius: 12px; font-size: 0.8rem; font-weight: 600;
+    .kpi-card .kpi-value {
+        font-size: 2rem; font-weight: 800; line-height: 1;
     }
-    .update-time {
-        color: #888; font-size: 0.8rem; text-align: right;
+    .kpi-card .kpi-label {
+        font-size: 0.72rem; color: #666; margin-top: 4px;
+        text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .kpi-total .kpi-value { color: #003087; }
+    .kpi-disp  .kpi-value { color: #2e7d32; }
+    .kpi-def   .kpi-value { color: #1565c0; }
+    .kpi-int   .kpi-value { color: #6a1b9a; }
+
+    /* ── Tarjetas zona ── */
+    .zona-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 12px;
+    }
+    .zona-card {
+        border-radius: 10px; padding: 14px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .zona-card.disponible { background: #f1f8e9; border-left: 5px solid #558b2f; }
+    .zona-card.agotada    { background: #fce4ec; border-left: 5px solid #c62828; }
+    .zona-nombre { font-weight: 700; font-size: 0.82rem; color: #333; margin-bottom: 6px; }
+    .zona-numero { font-size: 1.8rem; font-weight: 800; line-height: 1; }
+    .zona-sub    { font-size: 0.75rem; color: #777; margin-top: 2px; }
+    .disponible .zona-numero { color: #2e7d32; }
+    .agotada    .zona-numero { color: #c62828; }
+
+    /* ── Tarjetas especialidad ── */
+    .esp-card {
+        background: white; border: 1px solid #e0e0e0;
+        border-radius: 8px; padding: 12px; margin-bottom: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .esp-card.disponible { border-left: 4px solid #2e7d32; }
+    .esp-card.agotada    { border-left: 4px solid #e53935; opacity: 0.55; }
+    .esp-nombre { font-weight: 600; font-size: 0.9rem; color: #222; }
+    .esp-zona   { font-size: 0.75rem; color: #888; margin-bottom: 6px; }
+    .esp-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .badge {
+        padding: 3px 10px; border-radius: 12px;
+        font-size: 0.75rem; font-weight: 600;
+    }
+    .badge-def  { background: #e3f2fd; color: #1565c0; }
+    .badge-int  { background: #ede7f6; color: #6a1b9a; }
+    .badge-tom  { background: #ffebee; color: #c62828; }
+
+    /* ── Inputs táctiles ── */
+    .stButton > button { min-height: 48px !important; font-size: 1rem !important; border-radius: 8px !important; }
+
+    /* ── Ocultar sidebar toggle ── */
+    [data-testid="collapsedControl"] { display: none !important; }
+
+    /* ── Pantallas grandes ── */
+    @media (min-width: 700px) {
+        .kpi-grid  { grid-template-columns: repeat(4, 1fr); }
+        .zona-grid { grid-template-columns: repeat(3, 1fr); }
+        .app-header h1 { font-size: 1.8rem; }
     }
 </style>
 """, unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────
-# FUNCIONES DE CARGA Y ESTADO
+# FUNCIONES
 # ─────────────────────────────────────────────
 
-@st.cache_data(show_spinner="Cargando catálogo de plazas...")
-def cargar_catalogo(path: str) -> pd.DataFrame:
-    """Lee el Excel y devuelve un DataFrame plano con todas las plazas."""
+@st.cache_data(show_spinner="Cargando catálogo...")
+def cargar_catalogo(path):
     wb = openpyxl.load_workbook(path)
     ws = wb.active
-    registros = []
-    zona_actual = None
+    registros, zona_actual = [], None
     for row in ws.iter_rows(values_only=True):
         a, b, c = row
         if a is not None and b is None and c is None:
             zona_actual = str(a).strip()
         elif a is not None and zona_actual and str(a).strip().upper() not in ("DEFINITIVA", "INTERINA"):
-            definitivas = int(b) if b else 0
-            interinas   = int(c) if c else 0
-            if definitivas > 0 or interinas > 0:
-                registros.append({
-                    "zona":        zona_actual,
-                    "especialidad": str(a).strip(),
-                    "def_total":   definitivas,
-                    "int_total":   interinas,
-                })
+            d = int(b) if b else 0
+            i = int(c) if c else 0
+            if d > 0 or i > 0:
+                registros.append({"zona": zona_actual, "especialidad": str(a).strip(),
+                                   "def_total": d, "int_total": i})
     return pd.DataFrame(registros)
 
 
-def cargar_estado() -> dict:
-    """Carga el estado de plazas tomadas desde el JSON persistente."""
+def cargar_estado():
     if os.path.exists(ESTADO_PATH):
         with open(ESTADO_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     return {"tomadas": {}, "ultima_actualizacion": None, "dia_evento": 1}
 
 
-def guardar_estado(estado: dict):
-    """Persiste el estado en disco."""
+def guardar_estado(estado):
     estado["ultima_actualizacion"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     with open(ESTADO_PATH, "w", encoding="utf-8") as f:
         json.dump(estado, f, ensure_ascii=False, indent=2)
 
 
-def clave(zona: str, especialidad: str) -> str:
+def clave(zona, especialidad):
     return f"{zona}||{especialidad}"
+
+
+def calcular_disponibles(df, tomadas):
+    def _row(row):
+        t = tomadas.get(clave(row["zona"], row["especialidad"]), {"def": 0, "int": 0})
+        return pd.Series({
+            "def_tomadas": t["def"], "int_tomadas": t["int"],
+            "def_disp":    row["def_total"] - t["def"],
+            "int_disp":    row["int_total"] - t["int"],
+            "total_disp":  (row["def_total"] - t["def"]) + (row["int_total"] - t["int"]),
+        })
+    return df.join(df.apply(_row, axis=1))
 
 
 # ─────────────────────────────────────────────
@@ -120,201 +193,188 @@ def clave(zona: str, especialidad: str) -> str:
 # ─────────────────────────────────────────────
 
 if not os.path.exists(EXCEL_PATH):
-    st.error(f"❌ No se encontró el archivo **{EXCEL_PATH}**. Colócalo en la misma carpeta que este script.")
+    st.error(f"❌ Archivo no encontrado: **{EXCEL_PATH}**")
     st.stop()
 
-df = cargar_catalogo(EXCEL_PATH)
-estado = cargar_estado()
-tomadas: dict = estado.get("tomadas", {})
-
-
-# ─────────────────────────────────────────────
-# SIDEBAR – PANEL DE NORMATIVO
-# ─────────────────────────────────────────────
-
-st.sidebar.image(
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/IMSS_logo.svg/200px-IMSS_logo.svg.png",
-    width=140,
-)
-st.sidebar.markdown("## 🔐 Panel Normativo")
-st.sidebar.markdown("Actualiza diariamente las plazas tomadas.")
-
-dia_evento = st.sidebar.number_input(
-    "📅 Día del evento", min_value=1, max_value=10,
-    value=estado.get("dia_evento", 1), step=1
-)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("### Registrar plazas tomadas")
-
-zonas        = sorted(df["zona"].unique())
-zona_sel     = st.sidebar.selectbox("Zona / OOAD", zonas)
-espec_opciones = sorted(df[df["zona"] == zona_sel]["especialidad"].unique())
-espec_sel    = st.sidebar.selectbox("Especialidad", espec_opciones)
-
-fila = df[(df["zona"] == zona_sel) & (df["especialidad"] == espec_sel)].iloc[0]
-k    = clave(zona_sel, espec_sel)
-tomadas_actual = tomadas.get(k, {"def": 0, "int": 0})
-
-st.sidebar.markdown(f"""
-**Total ofertadas:**
-- Definitivas: `{fila['def_total']}`
-- Interinas: `{fila['int_total']}`
-""")
-
-nuevas_def = st.sidebar.number_input(
-    "Definitivas TOMADAS", min_value=0,
-    max_value=int(fila["def_total"]),
-    value=int(tomadas_actual["def"]), step=1
-)
-nuevas_int = st.sidebar.number_input(
-    "Interinas TOMADAS", min_value=0,
-    max_value=int(fila["int_total"]),
-    value=int(tomadas_actual["int"]), step=1
-)
-
-if st.sidebar.button("💾 Guardar cambios", use_container_width=True, type="primary"):
-    tomadas[k] = {"def": nuevas_def, "int": nuevas_int}
-    estado["tomadas"]    = tomadas
-    estado["dia_evento"] = dia_evento
-    guardar_estado(estado)
-    st.sidebar.success("✅ Guardado correctamente")
-    st.rerun()
-
-if estado.get("ultima_actualizacion"):
-    st.sidebar.markdown(f"<p class='update-time'>Última actualización:<br>{estado['ultima_actualizacion']}</p>",
-                        unsafe_allow_html=True)
-
-st.sidebar.markdown("---")
-if st.sidebar.button("🗑️ Reiniciar todo el estado", use_container_width=True):
-    if os.path.exists(ESTADO_PATH):
-        os.remove(ESTADO_PATH)
-    st.rerun()
-
+df_base = cargar_catalogo(EXCEL_PATH)
+estado  = cargar_estado()
+tomadas = estado.get("tomadas", {})
+dia     = estado.get("dia_evento", 1)
+df      = calcular_disponibles(df_base, tomadas)
+zonas   = sorted(df["zona"].unique())
 
 # ─────────────────────────────────────────────
-# CONSTRUIR DATAFRAME CON DISPONIBILIDAD
+# HEADER
 # ─────────────────────────────────────────────
-
-def disponibles(row):
-    k = clave(row["zona"], row["especialidad"])
-    t = tomadas.get(k, {"def": 0, "int": 0})
-    return pd.Series({
-        "def_tomadas":  t["def"],
-        "int_tomadas":  t["int"],
-        "def_disp":     row["def_total"] - t["def"],
-        "int_disp":     row["int_total"] - t["int"],
-        "total_disp":   (row["def_total"] - t["def"]) + (row["int_total"] - t["int"]),
-    })
-
-df = df.join(df.apply(disponibles, axis=1))
-
+ultima = estado.get("ultima_actualizacion") or "Sin actualizaciones aún"
+st.markdown(f"""
+<div class="app-header">
+    <h1>🏥 Draft IMSS 2026</h1>
+    <p>Plazas Disponibles · Día {dia} del evento</p>
+    <p style="font-size:0.75rem; opacity:0.7">Última actualización: {ultima}</p>
+</div>
+""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# VISTA PRINCIPAL
+# KPIs
 # ─────────────────────────────────────────────
+total = int(df["def_total"].sum() + df["int_total"].sum())
+disp  = int(df["def_disp"].sum()  + df["int_disp"].sum())
+def_d = int(df["def_disp"].sum())
+int_d = int(df["int_disp"].sum())
 
-st.markdown(f"<h1 class='main-title'>🏥 Draft IMSS 2026 — Plazas Disponibles</h1>", unsafe_allow_html=True)
-st.markdown(f"<p class='sub-title'>Día {dia_evento} del evento · Delegación Baja California y Sonora</p>",
-            unsafe_allow_html=True)
+st.markdown(f"""
+<div class="kpi-grid">
+    <div class="kpi-card kpi-total"><div class="kpi-value">{total}</div><div class="kpi-label">📋 Total Plazas</div></div>
+    <div class="kpi-card kpi-disp"> <div class="kpi-value">{disp}</div> <div class="kpi-label">✅ Disponibles</div></div>
+    <div class="kpi-card kpi-def">  <div class="kpi-value">{def_d}</div><div class="kpi-label">🎓 Definitivas</div></div>
+    <div class="kpi-card kpi-int">  <div class="kpi-value">{int_d}</div><div class="kpi-label">📄 Interinas</div></div>
+</div>
+""", unsafe_allow_html=True)
 
-# ── KPIs Globales ──
-total_def  = df["def_total"].sum()
-total_int  = df["int_total"].sum()
-tom_def    = df["def_tomadas"].sum()
-tom_int    = df["int_tomadas"].sum()
-disp_def   = df["def_disp"].sum()
-disp_int   = df["int_disp"].sum()
+# ─────────────────────────────────────────────
+# TABS
+# ─────────────────────────────────────────────
+tab_plazas, tab_zonas, tab_normativo = st.tabs(["📋 Plazas", "🗺️ Por Zona", "🔐 Normativo"])
 
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("📋 Total Plazas",   int(total_def + total_int))
-col2.metric("✅ Disponibles",    int(disp_def + disp_int),
-            delta=f"-{int(tom_def + tom_int)} tomadas", delta_color="inverse")
-col3.metric("🎓 Definitivas disp.", int(disp_def))
-col4.metric("📄 Interinas disp.",  int(disp_int))
 
+# ══════════════════════════════════════════════
+# TAB 1 – PLAZAS
+# ══════════════════════════════════════════════
+with tab_plazas:
+    zona_filtro = st.multiselect("Filtrar por Zona", options=zonas)
+    col_a, col_b = st.columns(2)
+    with col_a:
+        solo_disp = st.checkbox("Solo disponibles", value=True)
+    with col_b:
+        tipo = st.selectbox("Tipo", ["Ambas", "Definitivas", "Interinas"], label_visibility="collapsed")
+
+    vista = df.copy()
+    if zona_filtro:
+        vista = vista[vista["zona"].isin(zona_filtro)]
+    if solo_disp:
+        vista = vista[vista["total_disp"] > 0]
+    if tipo == "Definitivas":
+        vista = vista[vista["def_disp"] > 0]
+    elif tipo == "Interinas":
+        vista = vista[vista["int_disp"] > 0]
+
+    st.caption(f"{len(vista)} especialidades encontradas")
+
+    if vista.empty:
+        st.info("No hay plazas disponibles con estos filtros.")
+    else:
+        for _, row in vista.iterrows():
+            css = "disponible" if row["total_disp"] > 0 else "agotada"
+            badges = ""
+            if row["def_disp"] > 0:
+                badges += f'<span class="badge badge-def">🎓 {int(row["def_disp"])} Def.</span>'
+            if row["int_disp"] > 0:
+                badges += f'<span class="badge badge-int">📄 {int(row["int_disp"])} Int.</span>'
+            tom = int(row["def_tomadas"] + row["int_tomadas"])
+            if tom > 0:
+                badges += f'<span class="badge badge-tom">❌ {tom} tomadas</span>'
+            st.markdown(f"""
+            <div class="esp-card {css}">
+                <div class="esp-nombre">{row['especialidad']}</div>
+                <div class="esp-zona">{row['zona']}</div>
+                <div class="esp-badges">{badges}</div>
+            </div>""", unsafe_allow_html=True)
+
+        st.markdown("")
+        tabla_exp = vista[["zona","especialidad","def_disp","int_disp","total_disp","def_tomadas","int_tomadas"]].copy()
+        tabla_exp.columns = ["Zona","Especialidad","Def.Disponibles","Int.Disponibles","Total Disp.","Def.Tomadas","Int.Tomadas"]
+        csv = tabla_exp.to_csv(index=False).encode("utf-8-sig")
+        st.download_button("⬇️ Descargar CSV", data=csv,
+            file_name=f"plazas_dia{dia}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+            mime="text/csv", use_container_width=True)
+
+
+# ══════════════════════════════════════════════
+# TAB 2 – POR ZONA
+# ══════════════════════════════════════════════
+with tab_zonas:
+    cards_html = '<div class="zona-grid">'
+    for zona in zonas:
+        dz     = df[df["zona"] == zona]
+        disp_z = int(dz["total_disp"].sum())
+        tom_z  = int((dz["def_tomadas"] + dz["int_tomadas"]).sum())
+        tot_z  = int((dz["def_total"] + dz["int_total"]).sum())
+        css    = "disponible" if disp_z > 0 else "agotada"
+        icon   = "✅" if disp_z > 0 else "🔴"
+        cards_html += f"""
+        <div class="zona-card {css}">
+            <div class="zona-nombre">{icon} {zona}</div>
+            <div class="zona-numero">{disp_z}</div>
+            <div class="zona-sub">de {tot_z} disponibles</div>
+            <div class="zona-sub">{tom_z} tomadas</div>
+        </div>"""
+    cards_html += "</div>"
+    st.markdown(cards_html, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("#### Detalle por zona")
+    for zona in zonas:
+        dz = df[df["zona"] == zona]
+        dz_disp = dz[dz["total_disp"] > 0]
+        n = len(dz_disp)
+        with st.expander(f"{'✅' if n > 0 else '🔴'} {zona}  —  {n} especialidades disponibles"):
+            if dz_disp.empty:
+                st.warning("Sin plazas disponibles en esta zona.")
+            else:
+                for _, r in dz_disp.iterrows():
+                    st.markdown(f"**{r['especialidad']}** — 🎓 `{int(r['def_disp'])}` def. · 📄 `{int(r['int_disp'])}` int.")
+
+
+# ══════════════════════════════════════════════
+# TAB 3 – NORMATIVO
+# ══════════════════════════════════════════════
+with tab_normativo:
+    st.markdown("#### 🔐 Actualización de plazas tomadas")
+    st.info("Solo el equipo normativo debe operar esta sección.")
+
+    dia_nuevo = st.number_input("📅 Día del evento", min_value=1, max_value=10, value=dia, step=1)
+    st.markdown("---")
+
+    zona_sel  = st.selectbox("🗺️ Zona / OOAD", zonas, key="n_zona")
+    espec_ops = sorted(df[df["zona"] == zona_sel]["especialidad"].unique())
+    espec_sel = st.selectbox("🔬 Especialidad", espec_ops, key="n_espec")
+
+    fila  = df[(df["zona"] == zona_sel) & (df["especialidad"] == espec_sel)].iloc[0]
+    k_sel = clave(zona_sel, espec_sel)
+    act   = tomadas.get(k_sel, {"def": 0, "int": 0})
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Total Definitivas", int(fila["def_total"]))
+        n_def = st.number_input("Tomadas (Def.)", 0, int(fila["def_total"]), int(act["def"]), key="n_def")
+    with col2:
+        st.metric("Total Interinas", int(fila["int_total"]))
+        n_int = st.number_input("Tomadas (Int.)", 0, int(fila["int_total"]), int(act["int"]), key="n_int")
+
+    disp_prev_def = int(fila["def_total"]) - n_def
+    disp_prev_int = int(fila["int_total"]) - n_int
+    st.markdown(f"> **Vista previa:** quedarán **{disp_prev_def}** definitivas y **{disp_prev_int}** interinas disponibles.")
+
+    if st.button("💾 Guardar cambios", use_container_width=True, type="primary"):
+        tomadas[k_sel]       = {"def": n_def, "int": n_int}
+        estado["tomadas"]    = tomadas
+        estado["dia_evento"] = dia_nuevo
+        guardar_estado(estado)
+        st.success(f"✅ Guardado: {zona_sel} · {espec_sel}")
+        st.cache_data.clear()
+        st.rerun()
+
+    st.markdown("---")
+    with st.expander("⚠️ Zona de peligro"):
+        if st.button("🗑️ Reiniciar TODO el estado del evento", use_container_width=True):
+            if os.path.exists(ESTADO_PATH):
+                os.remove(ESTADO_PATH)
+            st.cache_data.clear()
+            st.rerun()
+
+# ─────────────────────────────────────────────
+# FOOTER
+# ─────────────────────────────────────────────
 st.markdown("---")
-
-# ── Filtros de vista ──
-col_f1, col_f2, col_f3 = st.columns([2, 2, 2])
-with col_f1:
-    zona_filtro = st.multiselect("🗺️ Filtrar por Zona", options=zonas, default=[])
-with col_f2:
-    solo_disponibles = st.checkbox("Mostrar solo con plazas disponibles", value=True)
-with col_f3:
-    tipo_plaza = st.radio("Tipo de plaza", ["Ambas", "Solo Definitivas", "Solo Interinas"], horizontal=True)
-
-# Aplicar filtros
-vista = df.copy()
-if zona_filtro:
-    vista = vista[vista["zona"].isin(zona_filtro)]
-if solo_disponibles:
-    vista = vista[vista["total_disp"] > 0]
-if tipo_plaza == "Solo Definitivas":
-    vista = vista[vista["def_disp"] > 0]
-elif tipo_plaza == "Solo Interinas":
-    vista = vista[vista["int_disp"] > 0]
-
-# ── Tabla principal ──
-st.markdown(f"### 📊 Plazas — {len(vista)} registros encontrados")
-
-if vista.empty:
-    st.info("No hay plazas disponibles con los filtros seleccionados.")
-else:
-    tabla = vista[["zona", "especialidad", "def_total", "def_tomadas", "def_disp",
-                   "int_total", "int_tomadas", "int_disp", "total_disp"]].copy()
-    tabla.columns = [
-        "Zona/OOAD", "Especialidad",
-        "Def. Total", "Def. Tomadas", "Def. Disponibles",
-        "Int. Total", "Int. Tomadas", "Int. Disponibles",
-        "Total Disponibles"
-    ]
-
-    st.dataframe(
-        tabla.style
-            .applymap(lambda v: "background-color: #c8e6c9; font-weight:bold"
-                      if isinstance(v, int) and v > 0 and tabla.columns[tabla.columns.tolist().index(tabla.columns[tabla.eq(v).any()].tolist()[0]) if False else 0] in ["Def. Disponibles", "Int. Disponibles", "Total Disponibles"] else "",
-                      subset=["Def. Disponibles", "Int. Disponibles", "Total Disponibles"])
-            .format({"Def. Total": "{:.0f}", "Def. Tomadas": "{:.0f}", "Def. Disponibles": "{:.0f}",
-                     "Int. Total": "{:.0f}", "Int. Tomadas": "{:.0f}", "Int. Disponibles": "{:.0f}",
-                     "Total Disponibles": "{:.0f}"}),
-        use_container_width=True,
-        height=500,
-    )
-
-    # Botón de exportar
-    csv = tabla.to_csv(index=False).encode("utf-8-sig")
-    st.download_button(
-        label="⬇️ Descargar reporte CSV",
-        data=csv,
-        file_name=f"plazas_disponibles_dia{dia_evento}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-        mime="text/csv",
-    )
-
-# ── Vista por Zona ──
-st.markdown("---")
-st.markdown("### 🗺️ Resumen por Zona")
-
-zonas_vista = zona_filtro if zona_filtro else zonas
-cols = st.columns(min(len(zonas_vista), 3))
-
-for idx, zona in enumerate(zonas_vista):
-    df_zona = df[df["zona"] == zona]
-    disp_z  = int(df_zona["total_disp"].sum())
-    tom_z   = int((df_zona["def_tomadas"] + df_zona["int_tomadas"]).sum())
-    tot_z   = int((df_zona["def_total"] + df_zona["int_total"]).sum())
-
-    with cols[idx % 3]:
-        color = "#e8f5e9" if disp_z > 0 else "#ffebee"
-        icon  = "✅" if disp_z > 0 else "🔴"
-        st.markdown(f"""
-        <div style="background:{color}; padding:12px; border-radius:8px; margin-bottom:10px;">
-            <b>{icon} {zona}</b><br>
-            <span style="font-size:1.4rem; font-weight:700; color:#003087">{disp_z}</span>
-            <span style="color:#666"> / {tot_z} disponibles</span><br>
-            <small style="color:#888">{tom_z} plazas tomadas</small>
-        </div>
-        """, unsafe_allow_html=True)
-
-st.markdown("---")
-st.caption("Sistema desarrollado para IMSS · Draft de Médicos Especialistas 2026 · Delegación BC y Sonora")
+st.caption("🏥 IMSS · Draft Médicos Especialistas 2026 · Delegación Baja California y Sonora")
