@@ -502,19 +502,21 @@ st.markdown("""
 # -----------------------------------------------
 # SWIPE ENTRE TABS (movil)
 # -----------------------------------------------
-st.markdown("""
+import streamlit.components.v1 as components
+components.html("""
 <script>
 (function() {
+    const doc = window.parent.document;
     let startX = 0, startY = 0;
-    document.addEventListener('touchstart', function(e) {
+    doc.addEventListener('touchstart', function(e) {
         startX = e.changedTouches[0].screenX;
         startY = e.changedTouches[0].screenY;
     });
-    document.addEventListener('touchend', function(e) {
+    doc.addEventListener('touchend', function(e) {
         const diffX = startX - e.changedTouches[0].screenX;
         const diffY = startY - e.changedTouches[0].screenY;
         if (Math.abs(diffX) < 60 || Math.abs(diffY) > Math.abs(diffX)) return;
-        const tabs = document.querySelectorAll('[role="tab"]');
+        const tabs = doc.querySelectorAll('[role="tab"]');
         if (!tabs.length) return;
         let active = -1;
         tabs.forEach(function(t, i) { if (t.getAttribute('aria-selected') === 'true') active = i; });
@@ -523,5 +525,5 @@ st.markdown("""
     });
 })();
 </script>
-""", unsafe_allow_html=True)
+""", height=0)
 
