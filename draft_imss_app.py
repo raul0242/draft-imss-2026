@@ -13,6 +13,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import traceback
+from io import BytesIO
 
 # -----------------------------------------------
 # CONFIGURACION
@@ -406,6 +407,25 @@ with tab_normativo:
                 st.error(f"Error al guardar: {e}")
 
         st.markdown("---")
+
+        # --- Descargar Excel ---
+        st.markdown("#### 📥 Descargar reporte Excel")
+        tabla_excel = df[["zona", "especialidad", "def_total", "int_total",
+                          "def_tomadas", "int_tomadas", "def_disp", "int_disp", "total_disp"]].copy()
+        tabla_excel.columns = ["Zona", "Especialidad", "Def.Total", "Int.Total",
+                               "Def.Tomadas", "Int.Tomadas", "Def.Disponibles", "Int.Disponibles", "Total Disp."]
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+            tabla_excel.to_excel(writer, index=False, sheet_name="Plazas")
+        st.download_button(
+            "📥 Descargar Excel",
+            data=buffer.getvalue(),
+            file_name=f"plazas_dia{dia}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+        )
+
+        st.markdown("---")
         if st.button("🔒 Cerrar sesion normativo", use_container_width=True):
             st.session_state.normativo_auth = False
             st.rerun()
@@ -416,3 +436,4 @@ with tab_normativo:
 # -----------------------------------------------
 st.markdown("---")
 st.caption("🏥 IMSS · Draft Médicos Especialistas 2026 · Delegación Baja California y San Luis Rio Colorado Sonora")
+
