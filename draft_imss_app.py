@@ -416,4 +416,3 @@ with tab_normativo:
 # -----------------------------------------------
 st.markdown("---")
 st.caption("🏥 IMSS · Draft Médicos Especialistas 2026 · Delegación Baja California y San Luis Rio Colorado Sonora")
-st.caption("Lic. Raul Paez Angulo & Claude AI")
