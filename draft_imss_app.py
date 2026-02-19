@@ -14,6 +14,8 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 import traceback
 from io import BytesIO
+import base64
+from pathlib import Path
 
 # -----------------------------------------------
 # CONFIGURACION
@@ -44,14 +46,30 @@ st.markdown("""
         max-width: 900px;
     }
 
+    /* -- Barra institucional de logos -- */
+    .inst-logo-bar {
+        background: white;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        border-radius: 12px 12px 0 0;
+        border-bottom: 3px solid #691C32;
+    }
+    .inst-logo-bar img { height: 48px; max-width: 180px; object-fit: contain; }
+
     /* -- Header -- */
     .app-header {
-        background: linear-gradient(135deg, #003087 0%, #0050b3 100%);
+        background: linear-gradient(135deg, #006B5E 0%, #13322B 100%);
         color: white;
         padding: 16px 20px;
-        border-radius: 12px;
+        border-radius: 0 0 12px 12px;
         margin-bottom: 16px;
         text-align: center;
+    }
+    .app-header-standalone {
+        border-radius: 12px;
     }
     .app-header h1 { font-size: 1.4rem; margin: 0; font-weight: 700; }
     .app-header p  { font-size: 0.85rem; margin: 4px 0 0; opacity: 0.85; }
@@ -78,10 +96,10 @@ st.markdown("""
         font-size: 0.72rem; color: #666; margin-top: 4px;
         text-transform: uppercase; letter-spacing: 0.03em;
     }
-    .kpi-total .kpi-value { color: #003087; }
-    .kpi-disp  .kpi-value { color: #2e7d32; }
-    .kpi-def   .kpi-value { color: #1565c0; }
-    .kpi-int   .kpi-value { color: #6a1b9a; }
+    .kpi-total .kpi-value { color: #13322B; }
+    .kpi-disp  .kpi-value { color: #006B5E; }
+    .kpi-def   .kpi-value { color: #006B5E; }
+    .kpi-int   .kpi-value { color: #691C32; }
 
     /* -- Tarjetas zona -- */
     .zona-grid {
@@ -95,13 +113,13 @@ st.markdown("""
         border: 1px solid #e0e0e0;
         box-shadow: 0 1px 4px rgba(0,0,0,0.05);
     }
-    .zona-card.disponible { background: #f1f8e9; border-left: 5px solid #558b2f; }
-    .zona-card.agotada    { background: #fce4ec; border-left: 5px solid #c62828; }
+    .zona-card.disponible { background: #e8f5e9; border-left: 5px solid #006B5E; }
+    .zona-card.agotada    { background: #fce4ec; border-left: 5px solid #691C32; }
     .zona-nombre { font-weight: 700; font-size: 0.82rem; color: #333; margin-bottom: 6px; }
     .zona-numero { font-size: 1.8rem; font-weight: 800; line-height: 1; }
     .zona-sub    { font-size: 0.75rem; color: #777; margin-top: 2px; }
-    .disponible .zona-numero { color: #2e7d32; }
-    .agotada    .zona-numero { color: #c62828; }
+    .disponible .zona-numero { color: #006B5E; }
+    .agotada    .zona-numero { color: #691C32; }
 
     /* -- Tarjetas especialidad -- */
     .esp-card {
@@ -109,8 +127,8 @@ st.markdown("""
         border-radius: 8px; padding: 12px; margin-bottom: 8px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .esp-card.disponible { border-left: 4px solid #2e7d32; }
-    .esp-card.agotada    { border-left: 4px solid #e53935; opacity: 0.55; }
+    .esp-card.disponible { border-left: 4px solid #006B5E; }
+    .esp-card.agotada    { border-left: 4px solid #691C32; opacity: 0.55; }
     .esp-nombre { font-weight: 600; font-size: 0.9rem; color: #222; }
     .esp-zona   { font-size: 0.75rem; color: #888; margin-bottom: 6px; }
     .esp-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
@@ -118,9 +136,9 @@ st.markdown("""
         padding: 3px 10px; border-radius: 12px;
         font-size: 0.75rem; font-weight: 600;
     }
-    .badge-def  { background: #e3f2fd; color: #1565c0; }
-    .badge-int  { background: #ede7f6; color: #6a1b9a; }
-    .badge-tom  { background: #ffebee; color: #c62828; }
+    .badge-def  { background: #e0f2f1; color: #006B5E; }
+    .badge-int  { background: #fce4ec; color: #691C32; }
+    .badge-tom  { background: #f5f5f5; color: #9B2335; }
 
     /* -- Botones tactiles -- */
     .stButton > button { min-height: 48px !important; font-size: 1rem !important; border-radius: 8px !important; }
@@ -128,11 +146,25 @@ st.markdown("""
     /* -- Ocultar sidebar toggle -- */
     [data-testid="collapsedControl"] { display: none !important; }
 
+    /* -- Footer institucional -- */
+    .inst-footer {
+        border-top: 3px solid #691C32;
+        padding-top: 12px;
+        margin-top: 8px;
+        text-align: center;
+    }
+    .inst-footer p {
+        font-size: 0.75rem;
+        color: #A7A9AC;
+        margin: 2px 0;
+    }
+
     /* -- Pantallas grandes -- */
     @media (min-width: 700px) {
         .kpi-grid  { grid-template-columns: repeat(4, 1fr); }
         .zona-grid { grid-template-columns: repeat(3, 1fr); }
         .app-header h1 { font-size: 1.8rem; }
+        .inst-logo-bar img { height: 56px; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -141,6 +173,14 @@ st.markdown("""
 # -----------------------------------------------
 # FUNCIONES
 # -----------------------------------------------
+
+def img_to_base64(relative_path):
+    """Convierte imagen local a base64 para embedding en HTML."""
+    file_path = Path(__file__).parent / relative_path
+    if file_path.exists():
+        return base64.b64encode(file_path.read_bytes()).decode()
+    return None
+
 
 def get_gsheet_client():
     """Crea y retorna un cliente autenticado de Google Sheets."""
@@ -229,9 +269,24 @@ zonas = sorted(df["zona"].unique())
 # -----------------------------------------------
 # HEADER
 # -----------------------------------------------
+logo_gob_b64 = img_to_base64("assets/logo_gobierno.png")
+logo_imss_b64 = img_to_base64("assets/logo_imss.png")
+
+has_logos = logo_gob_b64 or logo_imss_b64
+
+if has_logos:
+    logos_html = '<div class="inst-logo-bar">'
+    if logo_gob_b64:
+        logos_html += f'<img src="data:image/png;base64,{logo_gob_b64}" alt="Gobierno de México">'
+    if logo_imss_b64:
+        logos_html += f'<img src="data:image/png;base64,{logo_imss_b64}" alt="IMSS">'
+    logos_html += '</div>'
+    st.markdown(logos_html, unsafe_allow_html=True)
+
+header_extra_class = "" if has_logos else "app-header-standalone"
 st.markdown(f"""
-<div class="app-header">
-    <h1>🏥 Draft IMSS 2026</h1>
+<div class="app-header {header_extra_class}">
+    <h1>Draft IMSS 2026</h1>
     <p>Plazas Disponibles - OOAD Baja California</p>
     <p style="font-size:0.75rem; opacity:0.7">Dia {dia} del evento | Actualizado: {ultima}</p>
 </div>
@@ -434,6 +489,10 @@ with tab_normativo:
 # -----------------------------------------------
 # FOOTER
 # -----------------------------------------------
-st.markdown("---")
-st.caption("🏥 IMSS · Draft Médicos Especialistas 2026 · Delegación Baja California y San Luis Rio Colorado Sonora")
+st.markdown("""
+<div class="inst-footer">
+    <p><strong>Instituto Mexicano del Seguro Social</strong></p>
+    <p>Draft Médicos Especialistas 2026 · Delegación Baja California y San Luis Rio Colorado Sonora</p>
+</div>
+""", unsafe_allow_html=True)
 
