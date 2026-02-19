@@ -39,10 +39,13 @@ st.markdown("""
 <style>
     html, body, [class*="css"] { font-family: 'Segoe UI', sans-serif; }
 
+    /* -- Ocultar barra superior de Streamlit -- */
+    header[data-testid="stHeader"] { display: none !important; }
+
     .block-container {
         padding-left: 1rem !important;
         padding-right: 1rem !important;
-        padding-top: 1rem !important;
+        padding-top: 0.5rem !important;
         max-width: 900px;
     }
 
@@ -63,16 +66,16 @@ st.markdown("""
     .app-header {
         background: linear-gradient(135deg, #006B5E 0%, #13322B 100%);
         color: white;
-        padding: 16px 20px;
+        padding: 10px 16px;
         border-radius: 0 0 12px 12px;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
         text-align: center;
     }
     .app-header-standalone {
         border-radius: 12px;
     }
-    .app-header h1 { font-size: 1.4rem; margin: 0; font-weight: 700; }
-    .app-header p  { font-size: 0.85rem; margin: 4px 0 0; opacity: 0.85; }
+    .app-header h1 { font-size: 1.15rem; margin: 0; font-weight: 700; }
+    .app-header p  { font-size: 0.78rem; margin: 2px 0 0; opacity: 0.85; }
 
     /* -- KPI Cards -- */
     .kpi-grid {
@@ -494,5 +497,31 @@ st.markdown("""
     <p><strong>Instituto Mexicano del Seguro Social</strong></p>
     <p>Draft Médicos Especialistas 2026 · Delegación Baja California y San Luis Rio Colorado Sonora</p>
 </div>
+""", unsafe_allow_html=True)
+
+# -----------------------------------------------
+# SWIPE ENTRE TABS (movil)
+# -----------------------------------------------
+st.markdown("""
+<script>
+(function() {
+    let startX = 0, startY = 0;
+    document.addEventListener('touchstart', function(e) {
+        startX = e.changedTouches[0].screenX;
+        startY = e.changedTouches[0].screenY;
+    });
+    document.addEventListener('touchend', function(e) {
+        const diffX = startX - e.changedTouches[0].screenX;
+        const diffY = startY - e.changedTouches[0].screenY;
+        if (Math.abs(diffX) < 60 || Math.abs(diffY) > Math.abs(diffX)) return;
+        const tabs = document.querySelectorAll('[role="tab"]');
+        if (!tabs.length) return;
+        let active = -1;
+        tabs.forEach(function(t, i) { if (t.getAttribute('aria-selected') === 'true') active = i; });
+        if (diffX > 0 && active < tabs.length - 1) tabs[active + 1].click();
+        else if (diffX < 0 && active > 0) tabs[active - 1].click();
+    });
+})();
+</script>
 """, unsafe_allow_html=True)
 
