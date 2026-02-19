@@ -303,12 +303,6 @@ with tab_plazas:
             </div>""", unsafe_allow_html=True)
 
         st.markdown("")
-        tabla_exp = vista[["zona","especialidad","def_disp","int_disp","total_disp","def_tomadas","int_tomadas"]].copy()
-        tabla_exp.columns = ["Zona","Especialidad","Def.Disponibles","Int.Disponibles","Total Disp.","Def.Tomadas","Int.Tomadas"]
-        csv = tabla_exp.to_csv(index=False).encode("utf-8-sig")
-        st.download_button("⬇️ Descargar CSV", data=csv,
-            file_name=f"plazas_dia{dia}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-            mime="text/csv", use_container_width=True)
 
 
 # ================================================
@@ -421,4 +415,5 @@ with tab_normativo:
 # FOOTER
 # -----------------------------------------------
 st.markdown("---")
-st.caption("🏥 IMSS · Draft Médicos Especialistas 2026 · Delegación Baja California y Sonora")
+st.caption("🏥 IMSS · Draft Médicos Especialistas 2026 · Delegación Baja California y San Luis Rio Colorado Sonora")
+st.caption("Lic. Raul Paez Angulo & Claude AI")
