@@ -104,25 +104,20 @@ st.markdown("""
     .kpi-def   .kpi-value { color: #006B5E; }
     .kpi-int   .kpi-value { color: #691C32; }
 
-    /* -- Tarjetas zona -- */
-    .zona-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-        margin-top: 12px;
-    }
-    .zona-card {
-        border-radius: 10px; padding: 14px;
+    /* -- Zona: info + boton -- */
+    .zona-info {
+        text-align: center;
+        padding: 10px 4px 4px;
         border: 1px solid #e0e0e0;
+        border-radius: 10px 10px 0 0;
         box-shadow: 0 1px 4px rgba(0,0,0,0.05);
     }
-    .zona-card.disponible { background: #e8f5e9; border-left: 5px solid #006B5E; }
-    .zona-card.agotada    { background: #fce4ec; border-left: 5px solid #691C32; }
-    .zona-nombre { font-weight: 700; font-size: 0.82rem; color: #333; margin-bottom: 6px; }
-    .zona-numero { font-size: 1.8rem; font-weight: 800; line-height: 1; }
-    .zona-sub    { font-size: 0.75rem; color: #777; margin-top: 2px; }
-    .disponible .zona-numero { color: #006B5E; }
-    .agotada    .zona-numero { color: #691C32; }
+    .zona-info.disponible { background: #e8f5e9; border-left: 5px solid #006B5E; }
+    .zona-info.agotada    { background: #fce4ec; border-left: 5px solid #691C32; }
+    .zona-info .zona-numero { font-size: 1.8rem; font-weight: 800; line-height: 1; }
+    .zona-info .zona-sub    { font-size: 0.75rem; color: #777; margin-top: 2px; }
+    .zona-info.disponible .zona-numero { color: #006B5E; }
+    .zona-info.agotada .zona-numero    { color: #691C32; }
 
     /* -- Tarjetas especialidad -- */
     .esp-card {
@@ -378,37 +373,28 @@ with tab_plazas:
 # TAB 2 - POR ZONA
 # ================================================
 with tab_zonas:
-    cards_html = '<div class="zona-grid">'
-    for zona in zonas:
-        dz     = df[df["zona"] == zona]
-        disp_z = int(dz["total_disp"].sum())
-        tom_z  = int((dz["def_tomadas"] + dz["int_tomadas"]).sum())
-        tot_z  = int((dz["def_total"] + dz["int_total"]).sum())
-        css    = "disponible" if disp_z > 0 else "agotada"
-        icon   = "✅" if disp_z > 0 else "🔴"
-        cards_html += f"""
-        <div class="zona-card {css}">
-            <div class="zona-nombre">{icon} {zona}</div>
-            <div class="zona-numero">{disp_z}</div>
-            <div class="zona-sub">de {tot_z} disponibles</div>
-            <div class="zona-sub">{tom_z} tomadas</div>
-        </div>"""
-    cards_html += "</div>"
-    st.markdown(cards_html, unsafe_allow_html=True)
+    st.caption("Da clic en una zona para ver sus plazas filtradas en la pestaña Plazas.")
 
-    st.markdown("")
-    st.caption("👆 Da clic en una zona para ver sus plazas filtradas:")
     for i in range(0, len(zonas), 3):
-        btn_cols = st.columns(3)
+        cols = st.columns(3)
         for j in range(3):
             if i + j < len(zonas):
-                z = zonas[i + j]
-                dz_btn = df[df["zona"] == z]
-                disp_btn = int(dz_btn["total_disp"].sum())
-                ic = "✅" if disp_btn > 0 else "🔴"
-                with btn_cols[j]:
-                    if st.button(f"{ic} {z}", key=f"zbtn_{z}", use_container_width=True):
-                        st.session_state["zona_ms"] = [z]
+                zona = zonas[i + j]
+                dz     = df[df["zona"] == zona]
+                disp_z = int(dz["total_disp"].sum())
+                tom_z  = int((dz["def_tomadas"] + dz["int_tomadas"]).sum())
+                tot_z  = int((dz["def_total"] + dz["int_total"]).sum())
+                css    = "disponible" if disp_z > 0 else "agotada"
+                icon   = "✅" if disp_z > 0 else "🔴"
+                with cols[j]:
+                    st.markdown(f"""
+                    <div class="zona-info {css}">
+                        <div class="zona-numero">{disp_z}</div>
+                        <div class="zona-sub">de {tot_z} disponibles</div>
+                        <div class="zona-sub">{tom_z} tomadas</div>
+                    </div>""", unsafe_allow_html=True)
+                    if st.button(f"{icon} {zona}", key=f"zbtn_{zona}", use_container_width=True):
+                        st.session_state["zona_ms"] = [zona]
                         st.session_state["ir_a_plazas"] = True
                         st.rerun()
 
