@@ -143,22 +143,6 @@ st.markdown("""
     .badge-int  { background: #fce4ec; color: #691C32; }
     .badge-tom  { background: #f5f5f5; color: #9B2335; }
 
-    /* -- Buscar Especialidad -- */
-    .buscar-resultado {
-        background: white; border: 1px solid #e0e0e0;
-        border-radius: 10px; padding: 14px; margin-bottom: 10px;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-    }
-    .buscar-resultado.disponible { border-left: 5px solid #006B5E; }
-    .buscar-resultado.agotada    { border-left: 5px solid #691C32; opacity: 0.55; }
-    .buscar-zona { font-weight: 700; font-size: 1rem; color: #333; margin-bottom: 4px; }
-    .buscar-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
-    .buscar-status {
-        font-size: 0.85rem; font-weight: 600; margin-top: 4px;
-    }
-    .buscar-status.ok   { color: #006B5E; }
-    .buscar-status.full { color: #691C32; }
-
     /* -- Botones tactiles -- */
     .stButton > button { min-height: 48px !important; font-size: 1rem !important; border-radius: 8px !important; }
 
@@ -421,56 +405,51 @@ with tab_zonas:
 # ================================================
 with tab_buscar:
     st.markdown("#### 🔍 Buscar por Especialidad")
-    st.caption("Selecciona una especialidad para ver en qué zonas tiene plazas disponibles.")
+    st.caption("Escribe el nombre de la especialidad para filtrar. Da clic para ver en qué zonas hay plazas.")
 
+    # Campo de texto para filtrar
+    filtro_esp = st.text_input("🔎 Escribe para buscar...", key="filtro_esp",
+                               placeholder="Ej: Pediatría, Cirugía, Medicina...")
+
+    # Agrupar datos por especialidad
     todas_especialidades = sorted(df["especialidad"].unique())
-    esp_buscar = st.selectbox("Especialidad", todas_especialidades, key="buscar_esp",
-                              index=None, placeholder="Selecciona una especialidad...")
 
-    if esp_buscar:
-        resultado = df[df["especialidad"] == esp_buscar].copy()
-        resultado = resultado.sort_values("total_disp", ascending=False)
-
-        total_disp_esp = int(resultado["total_disp"].sum())
-        zonas_con = len(resultado[resultado["total_disp"] > 0])
-        zonas_sin = len(resultado[resultado["total_disp"] == 0])
-
-        # Resumen rapido
-        if total_disp_esp > 0:
-            st.success(f"**{esp_buscar}** tiene **{total_disp_esp}** plaza(s) disponible(s) en **{zonas_con}** zona(s).")
-        else:
-            st.error(f"**{esp_buscar}** no tiene plazas disponibles en ninguna zona.")
-
-        # Tarjetas por zona
-        for _, row in resultado.iterrows():
-            disp = int(row["total_disp"])
-            css = "disponible" if disp > 0 else "agotada"
-            icon = "✅" if disp > 0 else "🔴"
-
-            badges = ""
-            if row["def_disp"] > 0:
-                badges += f'<span class="badge badge-def">🎓 {int(row["def_disp"])} Definitiva(s)</span>'
-            if row["int_disp"] > 0:
-                badges += f'<span class="badge badge-int">📄 {int(row["int_disp"])} Interina(s)</span>'
-            tom = int(row["def_tomadas"] + row["int_tomadas"])
-            if tom > 0:
-                badges += f'<span class="badge badge-tom">❌ {tom} tomada(s)</span>'
-
-            if disp > 0:
-                status_html = f'<div class="buscar-status ok">{disp} plaza(s) disponible(s)</div>'
-            else:
-                status_html = f'<div class="buscar-status full">Sin plazas disponibles</div>'
-
-            st.markdown(f"""
-            <div class="buscar-resultado {css}">
-                <div class="buscar-zona">{icon} {row['zona']}</div>
-                {status_html}
-                <div class="buscar-badges">{badges}</div>
-            </div>""", unsafe_allow_html=True)
-
-        st.markdown("")
+    # Filtrar por texto ingresado
+    if filtro_esp:
+        especialidades_filtradas = [e for e in todas_especialidades
+                                    if filtro_esp.strip().lower() in e.lower()]
     else:
-        st.info("Selecciona una especialidad para ver sus plazas por zona.")
+        especialidades_filtradas = todas_especialidades
+
+    st.caption(f"{len(especialidades_filtradas)} especialidades encontradas")
+
+    if not especialidades_filtradas:
+        st.warning(f"No se encontró ninguna especialidad con \"{filtro_esp}\".")
+    else:
+        for esp in especialidades_filtradas:
+            datos_esp = df[df["especialidad"] == esp]
+            total_disp_esp = int(datos_esp["total_disp"].sum())
+            zonas_con = len(datos_esp[datos_esp["total_disp"] > 0])
+            total_zonas = len(datos_esp)
+            icon = "✅" if total_disp_esp > 0 else "🔴"
+
+            with st.expander(f"{icon} {esp}  —  {total_disp_esp} plaza(s) en {zonas_con} de {total_zonas} zona(s)"):
+                if total_disp_esp == 0:
+                    st.error("Sin plazas disponibles en ninguna zona.")
+                else:
+                    # Ordenar zonas: primero las que tienen disponibles
+                    datos_esp = datos_esp.sort_values("total_disp", ascending=False)
+                    for _, row in datos_esp.iterrows():
+                        d = int(row["total_disp"])
+                        if d > 0:
+                            detalles = []
+                            if row["def_disp"] > 0:
+                                detalles.append(f"🎓 `{int(row['def_disp'])}` definitiva(s)")
+                            if row["int_disp"] > 0:
+                                detalles.append(f"📄 `{int(row['int_disp'])}` interina(s)")
+                            st.markdown(f"**✅ {row['zona']}** — {' · '.join(detalles)}")
+                        else:
+                            st.markdown(f"~~🔴 {row['zona']}~~ — sin disponibles")
 
 
 # ================================================
