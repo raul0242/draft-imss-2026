@@ -314,7 +314,7 @@ _ir_a_plazas = False
 if st.session_state.pop("ir_a_plazas", False):
     _zona_target = st.session_state.pop("zona_ms", [])
     if _zona_target:
-        st.session_state["msel_zona"] = _zona_target
+        st.session_state["zona_nav_target"] = _zona_target
     _ir_a_plazas = True
 
 # -----------------------------------------------
@@ -327,7 +327,20 @@ tab_plazas, tab_zonas, tab_buscar, tab_normativo = st.tabs(["📋 Plazas", "🗺
 # TAB 1 - PLAZAS
 # ================================================
 with tab_plazas:
-    zona_filtro = st.multiselect("Filtrar por Zona", options=zonas, key="msel_zona")
+    # Filtro desde navegacion (Tab 2) o multiselect normal
+    zona_nav = st.session_state.get("zona_nav_target", None)
+    if zona_nav:
+        col_nav1, col_nav2 = st.columns([3, 1])
+        with col_nav1:
+            st.info(f"🗺️ Filtrado: **{', '.join(zona_nav)}**")
+        with col_nav2:
+            if st.button("✕ Quitar filtro", use_container_width=True):
+                del st.session_state["zona_nav_target"]
+                st.rerun()
+        zona_filtro = zona_nav
+    else:
+        zona_filtro = st.multiselect("Filtrar por Zona", options=zonas)
+
     col_a, col_b = st.columns(2)
     with col_a:
         solo_disp = st.checkbox("Solo disponibles", value=True)
