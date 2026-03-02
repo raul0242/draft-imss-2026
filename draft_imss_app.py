@@ -313,6 +313,16 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------
+# NAVEGACION: click en zona -> filtra en Tab Plazas
+# -----------------------------------------------
+_ir_a_plazas = False
+if st.session_state.pop("ir_a_plazas", False):
+    _zona_target = st.session_state.pop("zona_ms", [])
+    if _zona_target:
+        st.session_state["msel_zona"] = _zona_target
+    _ir_a_plazas = True
+
+# -----------------------------------------------
 # TABS
 # -----------------------------------------------
 tab_plazas, tab_zonas, tab_buscar, tab_normativo = st.tabs(["📋 Plazas", "🗺️ Por Zona", "🔍 Buscar Especialidad", "🔐 Normativo"])
@@ -322,7 +332,7 @@ tab_plazas, tab_zonas, tab_buscar, tab_normativo = st.tabs(["📋 Plazas", "🗺
 # TAB 1 - PLAZAS
 # ================================================
 with tab_plazas:
-    zona_filtro = st.multiselect("Filtrar por Zona", options=zonas)
+    zona_filtro = st.multiselect("Filtrar por Zona", options=zonas, key="msel_zona")
     col_a, col_b = st.columns(2)
     with col_a:
         solo_disp = st.checkbox("Solo disponibles", value=True)
@@ -385,6 +395,22 @@ with tab_zonas:
         </div>"""
     cards_html += "</div>"
     st.markdown(cards_html, unsafe_allow_html=True)
+
+    st.markdown("")
+    st.caption("👆 Da clic en una zona para ver sus plazas filtradas:")
+    for i in range(0, len(zonas), 3):
+        btn_cols = st.columns(3)
+        for j in range(3):
+            if i + j < len(zonas):
+                z = zonas[i + j]
+                dz_btn = df[df["zona"] == z]
+                disp_btn = int(dz_btn["total_disp"].sum())
+                ic = "✅" if disp_btn > 0 else "🔴"
+                with btn_cols[j]:
+                    if st.button(f"{ic} {z}", key=f"zbtn_{z}", use_container_width=True):
+                        st.session_state["zona_ms"] = [z]
+                        st.session_state["ir_a_plazas"] = True
+                        st.rerun()
 
     st.markdown("---")
     st.markdown("#### Detalle por zona")
@@ -579,3 +605,15 @@ components.html("""
 </script>
 """, height=0)
 
+# -----------------------------------------------
+# NAVEGACION: cambiar a Tab Plazas tras click en zona
+# -----------------------------------------------
+if _ir_a_plazas:
+    components.html("""
+    <script>
+    (function() {
+        const tabs = window.parent.document.querySelectorAll('[role="tab"]');
+        if (tabs.length > 0) tabs[0].click();
+    })();
+    </script>
+    """, height=0)
